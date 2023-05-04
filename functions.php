@@ -12,6 +12,8 @@ if ( ! defined( '_S_VERSION' ) ) {
 	define( '_S_VERSION', '1.0.0' );
 }
 
+define( 'LINK_THEME', get_stylesheet_directory_uri() );
+
 /**
  * Sets up theme defaults and registers support for various WordPress features.
  *
@@ -100,6 +102,7 @@ function imado_setup() {
 		)
 	);
 }
+
 add_action( 'after_setup_theme', 'imado_setup' );
 
 /**
@@ -110,8 +113,9 @@ add_action( 'after_setup_theme', 'imado_setup' );
  * @global int $content_width
  */
 function imado_content_width() {
-	$GLOBALS['content_width'] = apply_filters( 'imado_content_width', 640 );
+	$GLOBALS[ 'content_width' ] = apply_filters( 'imado_content_width', 640 );
 }
+
 add_action( 'after_setup_theme', 'imado_content_width', 0 );
 
 /**
@@ -132,6 +136,7 @@ function imado_widgets_init() {
 		)
 	);
 }
+
 add_action( 'widgets_init', 'imado_widgets_init' );
 
 /**
@@ -141,12 +146,20 @@ function imado_scripts() {
 	wp_enqueue_style( 'imado-style', get_stylesheet_uri(), array(), _S_VERSION );
 	wp_style_add_data( 'imado-style', 'rtl', 'replace' );
 
-	wp_enqueue_script( 'imado-navigation', get_template_directory_uri() . '/js/navigation.js', array(), _S_VERSION, true );
+	wp_enqueue_script( 'imado-navigation', LINK_THEME . '/js/navigation.js', array(), _S_VERSION, true );
 
 	if ( is_singular() && comments_open() && get_option( 'thread_comments' ) ) {
 		wp_enqueue_script( 'comment-reply' );
 	}
+
+	/* Scripts */
+	wp_enqueue_script( 'imd-jquery', LINK_THEME . '/js/jquery.min.js', array(), '1.0' );
+	wp_enqueue_script( 'imd-main', LINK_THEME . '/js/main.js', array( 'imd-jquery' ), '1.0' );
+	wp_localize_script( 'imd-main', 'main', array(
+		'ajax_url' => admin_url( 'admin-ajax.php' ),
+	) );
 }
+
 add_action( 'wp_enqueue_scripts', 'imado_scripts' );
 
 /**
@@ -176,3 +189,46 @@ if ( defined( 'JETPACK__VERSION' ) ) {
 	require get_template_directory() . '/inc/jetpack.php';
 }
 
+
+/*
+ * Get posts of year
+ * */
+add_action( 'wp_ajax_imd_get_post_of_year', 'ajax_get_post_of_year' );
+add_action( 'wp_ajax_nopriv_imd_get_post_of_year', 'ajax_get_post_of_year' );
+function ajax_get_post_of_year() {
+	$year = sanitize_text_field( $_REQUEST[ 'year' ] );
+
+	$args       = array(
+		'post_type' => 'post',
+		'year'      => $year,
+	);
+	$post_query = new WP_Query( $args );
+
+	ob_start();
+
+	include_once __DIR__ . '/inc/ajax-archive.php';
+
+	wp_send_json_success( ob_get_clean() );
+}
+
+
+/*
+ * Get posts of category
+ * */
+add_action( 'wp_ajax_imd_get_post_of_category', 'ajax_get_post_of_category' );
+add_action( 'wp_ajax_nopriv_imd_get_post_of_category', 'ajax_get_post_of_category' );
+function ajax_get_post_of_category() {
+	$category = sanitize_text_field( $_REQUEST[ 'category' ] );
+
+	$args       = array(
+		'post_type'     => 'post',
+		'category_name' => $category,
+	);
+	$post_query = new WP_Query( $args );
+
+	ob_start();
+
+	include_once __DIR__ . '/inc/ajax-archive.php';
+
+	wp_send_json_success( ob_get_clean() );
+}
